@@ -2,6 +2,8 @@
 
 A full-stack weather application that lets you manage users, view their locations on an interactive map, and check current weather and nearby tourist attractions. Built with modern cloud-native architecture using React, AWS Lambda, and Firebase.
 
+Live version on vercel: https://weatherappsouthgeeks.vercel.app/
+
 ## 🚀 Features
 
 - **User Management**: Full CRUD operations with zip code validation

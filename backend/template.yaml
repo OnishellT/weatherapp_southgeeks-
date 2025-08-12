@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  user-management-app
+
+  SAM template defining a single Lambda handler for all endpoints,
+  preserving existing functionality for users, weather, and places.
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: nodejs18.x
+    Architectures:
+      - x86_64
+    MemorySize: 1024
+    Environment:
+      Variables:
+        FIREBASE_API_KEY_NAME: /weatherapp/FIREBASE_API_KEY
+        FIREBASE_AUTH_DOMAIN_NAME: /weatherapp/FIREBASE_AUTH_DOMAIN
+        FIREBASE_DATABASE_URL_NAME: /weatherapp/FIREBASE_DATABASE_URL
+        FIREBASE_PROJECT_ID_NAME: /weatherapp/FIREBASE_PROJECT_ID
+        FIREBASE_STORAGE_BUCKET_NAME: /weatherapp/FIREBASE_STORAGE_BUCKET
+        FIREBASE_MESSAGING_SENDER_ID_NAME: /weatherapp/FIREBASE_MESSAGING_SENDER_ID
+        FIREBASE_APP_ID_NAME: /weatherapp/FIREBASE_APP_ID
+        OPENWEATHERMAP_API_KEY_NAME: /weatherapp/OPENWEATHERMAP_API_KEY
+        GEOAPIFY_API_KEY_NAME: /weatherapp/GEOAPIFY_API_KEY
+
+Resources:
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'*'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'*'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+
+  UsersCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/users.createUser
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/users
+            Method: post
+
+  UsersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/users.listUsers
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/users
+            Method: get
+        KeepWarm:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Name: UsersListKeepWarm
+            Description: Periodic invocation to keep the function warm
+            Enabled: true
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/users
+            Method: get
+
+  UsersGetByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/users.getUserById
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/users/{id}
+            Method: get
+
+  UsersUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/users.updateUser
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/users/{id}
+            Method: put
+
+  UsersDeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/users.deleteUser
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/users/{id}
+            Method: delete
+
+  WeatherGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/weather.getWeather
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/weather
+            Method: get
+
+  PlacesGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/places.getPlaces
+      Policies:
+        - AmazonSSMReadOnlyAccess
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /api/places
+            Method: get
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
